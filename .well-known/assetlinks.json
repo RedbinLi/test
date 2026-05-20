@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.redbinli.twa",
+        "sha256_cert_fingerprints": ["DB:9F:24:A1:F5:F8:EC:B1:66:EE:C2:FC:75:26:D3:7D:CD:AC:C1:F3:DE:23:7B:75:60:4E:94:48:F2:82:B8:52"]
+      }
+    }]
