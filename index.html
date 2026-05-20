@@ -1,0 +1,669 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a3c40">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="活动提醒">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>活动提醒助手</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');
+  :root { --bg:#f8f6f2; --surface:#fff; --primary:#1a3c40; --primary-light:#2c5f66; --accent:#e8833a; --accent-light:#f5a623; --danger:#d9444a; --success:#3a8c6e; --blue:#2563eb; --text:#2d2d2d; --text-secondary:#6b6b6b; --text-muted:#999; --border:#e8e4dd; --border-light:#f0ede8; --shadow-sm:0 1px 3px rgba(0,0,0,.06); --shadow-md:0 4px 16px rgba(0,0,0,.08); --shadow-lg:0 12px 40px rgba(0,0,0,.12); --radius-sm:8px; --radius:12px; --radius-lg:16px; --transition:.2s cubic-bezier(.4,0,.2,1); }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Noto Sans SC',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6;-webkit-font-smoothing:antialiased;}
+  body::before{content:'';position:fixed;top:-50%;left:-30%;width:100%;height:100%;background:radial-gradient(ellipse at 30% 20%,rgba(232,131,58,.06) 0%,transparent 70%),radial-gradient(ellipse at 70% 80%,rgba(26,60,64,.04) 0%,transparent 70%);pointer-events:none;z-index:0;}
+  .app-container{max-width:520px;margin:0 auto;padding:20px 16px 40px;position:relative;z-index:1;}
+  .app-header{text-align:center;padding:24px 0 8px;}
+  .app-header .logo{font-size:32px;margin-bottom:4px;}
+  .app-header h1{font-size:22px;font-weight:700;color:var(--primary);letter-spacing:-.3px;margin-bottom:2px;}
+  .app-header .subtitle{font-size:13px;color:var(--text-muted);font-weight:400;}
+  .nav{display:flex;background:var(--surface);border-radius:var(--radius-lg);padding:4px;margin-bottom:20px;box-shadow:var(--shadow-sm);position:sticky;top:12px;z-index:10;}
+  .nav-btn{flex:1;padding:10px 12px;border:none;background:transparent;border-radius:var(--radius);font-size:14px;font-weight:500;color:var(--text-secondary);cursor:pointer;transition:all var(--transition);font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .nav-btn.active{background:var(--primary);color:white;box-shadow:0 2px 8px rgba(26,60,64,.25);}
+  .nav-btn:hover:not(.active){background:var(--border-light);color:var(--text);}
+  .page{display:none;}
+  .page.active{display:block;animation:fadeSlideIn .3s ease;}
+  @keyframes fadeSlideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .card{background:var(--surface);border-radius:var(--radius-lg);padding:20px;margin-bottom:14px;box-shadow:var(--shadow-sm);border:1px solid var(--border-light);transition:box-shadow var(--transition);}
+  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .section-title{font-size:15px;font-weight:600;color:var(--primary);}
+  .badge{background:var(--accent);color:white;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;letter-spacing:.3px;}
+  .badge.danger{background:var(--danger);}.badge.success{background:var(--success);}
+  .person-card{display:flex;align-items:center;gap:14px;padding:14px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border-light);margin-bottom:8px;transition:all var(--transition);}
+  .person-card:hover{border-color:var(--border);box-shadow:var(--shadow-sm);}
+  .person-card.overdue{border-left:3px solid var(--danger);background:#fef5f5;}
+  .person-card.today{border-left:3px solid var(--accent);background:#fefaf5;}
+  .person-avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--primary-light),var(--primary));color:white;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;flex-shrink:0;}
+  .person-avatar.overdue-av{background:linear-gradient(135deg,#e05a5a,var(--danger));}
+  .person-avatar.today-av{background:linear-gradient(135deg,var(--accent-light),var(--accent));}
+  .person-info{flex:1;min-width:0;}
+  .person-name{font-size:15px;font-weight:600;color:var(--text);}
+  .person-meta{font-size:12px;color:var(--text-secondary);margin-top:2px;display:flex;flex-wrap:wrap;gap:8px;}
+  .due-date{font-size:12px;font-weight:500;padding:4px 10px;border-radius:6px;white-space:nowrap;}
+  .due-date.overdue-label{background:#fde8e8;color:var(--danger);}
+  .due-date.today-label{background:#fef0e0;color:var(--accent);}
+  .due-date.upcoming-label{background:#e8f4f6;color:var(--primary-light);}
+  .person-actions{display:flex;gap:6px;flex-shrink:0;}
+  .btn-icon{width:32px;height:32px;border-radius:8px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all var(--transition);background:var(--border-light);color:var(--text-secondary);}
+  .btn-icon:hover{background:var(--border);color:var(--text);}
+  .btn-icon.done:hover{background:#d4f0e3;color:var(--success);}
+  .btn-icon.delete:hover{background:#fde8e8;color:var(--danger);}
+  .btn-icon.delay:hover{background:#e8f0fe;color:var(--blue);}
+  .btn{padding:10px 20px;border-radius:var(--radius);border:none;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;transition:all var(--transition);}
+  .btn-primary{background:var(--primary);color:white;}
+  .btn-primary:hover{background:var(--primary-light);box-shadow:0 4px 12px rgba(26,60,64,.2);}
+  .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text-secondary);}
+  .btn-outline:hover{border-color:var(--primary);color:var(--primary);}
+  .form-group{margin-bottom:16px;}
+  .form-label{display:block;font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:6px;}
+  .form-label .required{color:var(--danger);margin-left:2px;}
+  .form-input{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;color:var(--text);background:var(--surface);transition:border-color var(--transition);outline:none;}
+  .form-input:focus{border-color:var(--primary-light);box-shadow:0 0 0 3px rgba(26,60,64,.08);}
+  .form-input::placeholder{color:var(--text-muted);}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .form-actions{display:flex;gap:10px;margin-top:20px;}
+  .form-actions .btn{flex:1;}
+  .calendar-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .calendar-month{font-size:17px;font-weight:600;color:var(--primary);}
+  .calendar-nav{display:flex;gap:4px;}
+  .calendar-nav-btn{width:34px;height:34px;border-radius:var(--radius-sm);border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all var(--transition);color:var(--text-secondary);}
+  .calendar-nav-btn:hover{border-color:var(--primary-light);color:var(--primary);}
+  .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .calendar-day-header{text-align:center;font-size:11px;font-weight:500;color:var(--text-muted);padding:6px 0;text-transform:uppercase;letter-spacing:.5px;}
+  .calendar-cell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:var(--radius-sm);cursor:pointer;transition:all var(--transition);position:relative;font-size:13px;font-weight:500;color:var(--text);}
+  .calendar-cell:hover{background:var(--border-light);}
+  .calendar-cell.other-month{color:var(--text-muted);opacity:.4;cursor:default;}
+  .calendar-cell.today-cell{background:var(--primary);color:white;font-weight:600;}
+  .calendar-cell.selected{background:var(--accent);color:white;}
+  .calendar-cell .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);margin-top:2px;}
+  .calendar-cell.today-cell .dot,.calendar-cell.selected .dot{background:white;}
+  .calendar-cell.other-month .dot{display:none;}
+  .empty-state{text-align:center;padding:40px 20px;color:var(--text-muted);}
+  .empty-state .icon{font-size:48px;margin-bottom:12px;opacity:.6;}
+  .empty-state p{font-size:14px;}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--primary);color:white;padding:10px 24px;border-radius:24px;font-size:13px;font-weight:500;z-index:200;box-shadow:var(--shadow-lg);animation:toastIn .3s ease,toastOut .3s ease 2s forwards;}
+  @keyframes toastIn{from{transform:translateX(-50%) translateY(20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+  @keyframes toastOut{from{opacity:1}to{opacity:0}}
+  .date-group-header{font-size:13px;font-weight:600;color:var(--text-secondary);margin:16px 0 8px;padding-left:4px;display:flex;align-items:center;gap:8px;}
+  .date-group-header::after{content:'';flex:1;height:1px;background:var(--border);}
+  #people-search{margin-bottom:0;}
+  @media(max-width:400px){.app-container{padding:12px 10px 32px;}.form-row{grid-template-columns:1fr;}.person-card{flex-wrap:wrap;}.person-actions{width:100%;justify-content:flex-end;}}
+</style>
+</head>
+<body>
+<!-- v2.0 rebuilt --><div class="app-container">
+  <div class="app-header">
+    <div class="logo">&#x1F4CB;</div>
+    <h1>活动提醒助手</h1>
+    <div class="subtitle">每两周自动提醒 &middot; 不再错过活动</div>
+  </div>
+  <nav class="nav">
+    <button class="nav-btn active" data-page="home">&#x1F3E0; 首页</button>
+    <button class="nav-btn" data-page="add">&#x2795; 录入</button>
+    <button class="nav-btn" data-page="calendar">&#x1F4C5; 日历</button>
+  </nav>
+  <div id="page-home" class="page active"><div id="home-content"></div></div>
+  <div id="page-add" class="page">
+    <div class="card">
+      <div class="section-header"><span class="section-title">录入人员信息</span></div>
+      <form id="person-form">
+        <div class="form-group"><label class="form-label">姓名<span class="required">*</span></label><input type="text" class="form-input" id="input-name" placeholder="请输入姓名" required></div>
+        <div class="form-group"><label class="form-label">最近一次参加活动的日期<span class="required">*</span></label><input type="date" class="form-input" id="input-date" required></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">年龄</label><input type="number" class="form-input" id="input-age" placeholder="选填" min="1" max="150"></div>
+          <div class="form-group"><label class="form-label">电话</label><input type="tel" class="form-input" id="input-phone" placeholder="选填"></div>
+        </div>
+        <div class="form-group"><label class="form-label">自定义备注</label><input type="text" class="form-input" id="input-notes" placeholder="可添加任意备注信息"></div>
+        <input type="hidden" id="input-edit-id">
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline" id="btn-cancel-edit" style="display:none">取消编辑</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit">&#x2705; 添加提醒</button>
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <div class="section-header"><span class="section-title">已录入人员</span><span class="badge" id="people-count">0</span></div>
+      <div class="form-group" style="margin-bottom:12px"><input type="text" class="form-input" id="people-search" placeholder="&#x1F50D; 搜索姓名、电话或备注..."></div>
+      <div id="people-list"></div>
+    </div>
+  </div>
+  <div id="page-calendar" class="page">
+    <div class="card">
+      <div class="calendar-header">
+        <span class="calendar-month" id="cal-month-year"></span>
+        <div class="calendar-nav">
+          <button class="calendar-nav-btn" id="cal-prev">&#x25C0;</button>
+          <button class="calendar-nav-btn" id="cal-today">今天</button>
+          <button class="calendar-nav-btn" id="cal-next">&#x25B6;</button>
+        </div>
+      </div>
+      <div class="calendar-grid" id="cal-grid"></div>
+    </div>
+    <div class="card" id="cal-detail-card" style="display:none">
+      <div class="section-header"><span class="section-title" id="cal-detail-title">当日人员</span></div>
+      <div id="cal-detail-list"></div>
+    </div>
+  </div>
+</div>
+<div id="toast-container"></div>
+<script>
+(function() {
+  var STORAGE_KEY = 'activity_reminder_people';
+
+  // ── Data ──
+  function loadPeople() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e) { return []; } }
+  function savePeople(p) { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); }
+
+  // ── Date helpers ──
+  function dateKey(d) { var y=d.getFullYear(); var m=String(d.getMonth()+1).padStart(2,'0'); var dd=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
+  function daysBetween(d1,d2) { return Math.floor((d2.getTime()-d1.getTime())/86400000); }
+  function formatDateShort(d) { return (d.getMonth()+1)+'/'+d.getDate(); }
+
+  // ── Biweekly: next due date >= today ──
+  function getNextDueDate(refDateStr) {
+    var ref = new Date(refDateStr + 'T00:00:00');
+    var now = new Date(); now.setHours(0,0,0,0);
+    if (ref > now) return null;
+    var diffDays = Math.floor((now.getTime() - ref.getTime()) / 86400000);
+    var cycles = Math.floor(diffDays / 14);
+    var next = new Date(ref);
+    next.setDate(next.getDate() + (cycles + 1) * 14);
+    return next;
+  }
+
+  // ── Biweekly: ALL cycle dates in [rangeStart, rangeEnd] (only >= ref date) ──
+  function getCycleDatesInRange(refDateStr, rangeStart, rangeEnd) {
+    var ref = new Date(refDateStr + 'T00:00:00');
+    var start = new Date(rangeStart); start.setHours(0,0,0,0);
+    var end = new Date(rangeEnd); end.setHours(0,0,0,0);
+    var diffDays = Math.floor((start.getTime() - ref.getTime()) / 86400000);
+    var firstCycle = Math.ceil(diffDays / 14) * 14;
+    if (firstCycle < 0) firstCycle = 0;
+    var dates = [];
+    var d = new Date(ref);
+    d.setDate(d.getDate() + firstCycle);
+    while (d <= end) {
+      dates.push(dateKey(d));
+      d.setDate(d.getDate() + 14);
+    }
+    return dates;
+  }
+
+  // ── Enrich people with computed fields ──
+  function getPeopleWithDueDates() {
+    var people = loadPeople();
+    var today = new Date(); today.setHours(0,0,0,0);
+    var todayKey = dateKey(today);
+    return people.map(function(p) {
+      // Check if today is on the cycle AND not yet marked done today
+      var ref = new Date(p.lastActivityDate + 'T00:00:00');
+      var diffRef = daysBetween(ref, today);
+      var onCycleToday = (diffRef >= 0 && diffRef % 14 === 0 && p.lastActivityDate !== todayKey);
+
+      var nextDue, status;
+      if (onCycleToday) {
+        nextDue = new Date(today);
+        status = 'today';
+      } else {
+        nextDue = getNextDueDate(p.lastActivityDate);
+        status = 'upcoming';
+        if (nextDue) {
+          var diff = daysBetween(today, nextDue);
+          if (diff < 0) status = 'overdue';
+        }
+      }
+      return { id:p.id, name:p.name, lastActivityDate:p.lastActivityDate, age:p.age, phone:p.phone, notes:p.notes, nextDue:nextDue, status:status, dueKey:nextDue?dateKey(nextDue):null };
+    });
+  }
+
+  function escapeHtml(s) { var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+  // ── Navigation ──
+  document.querySelectorAll('.nav-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+      document.getElementById('page-' + btn.dataset.page).classList.add('active');
+      if (btn.dataset.page === 'home') renderHome();
+      if (btn.dataset.page === 'add') renderPeopleList();
+      if (btn.dataset.page === 'calendar') renderCalendar();
+    });
+  });
+
+  // ── Toast ──
+  function showToast(msg) {
+    var existing = document.querySelector('.toast');
+    if (existing) existing.remove();
+    var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+    document.getElementById('toast-container').appendChild(t);
+    setTimeout(function() { t.remove(); }, 2500);
+  }
+
+  // ── Refresh all views ──
+  function refreshAllViews() {
+    renderHome();
+    renderPeopleList();
+    if (document.getElementById('page-calendar').classList.contains('active')) renderCalendar();
+  }
+
+  // ── Render person card (used on home, people list, calendar detail) ──
+  function renderPersonCard(p) {
+    var initial = p.name.charAt(0);
+    var sc = p.status === 'overdue' ? 'overdue' : p.status === 'today' ? 'today' : '';
+    var dl = p.status === 'overdue' ? 'overdue-label' : p.status === 'today' ? 'today-label' : 'upcoming-label';
+    var av = p.status === 'overdue' ? 'overdue-av' : p.status === 'today' ? 'today-av' : '';
+    var dt;
+    if (p.status === 'overdue') dt = '已过期 ' + Math.abs(daysBetween(new Date(), p.nextDue)) + ' 天';
+    else if (p.status === 'today') dt = '今天';
+    else dt = formatDateShort(p.nextDue);
+    if (p.offsetLabel) dt += ' ' + p.offsetLabel;
+
+    var meta = '';
+    if (p.age) meta += '<span>年龄: ' + escapeHtml(String(p.age)) + '</span>';
+    if (p.phone) meta += '<span>&#x1F4DE; ' + escapeHtml(p.phone) + '</span>';
+    if (p.notes) meta += '<span>&#x1F4DD; ' + escapeHtml(p.notes) + '</span>';
+
+    return '<div class="person-card ' + sc + '" data-id="' + p.id + '">' +
+      '<div class="person-avatar ' + av + '">' + initial + '</div>' +
+      '<div class="person-info"><div class="person-name">' + escapeHtml(p.name) + '</div>' +
+      (meta ? '<div class="person-meta">' + meta + '</div>' : '') + '</div>' +
+      '<span class="due-date ' + dl + '">' + dt + '</span>' +
+      '<div class="person-actions">' +
+        '<button class="btn-icon done" data-action="done" data-id="' + p.id + '" title="标记完成">&#x2713;</button>' +
+        '<button class="btn-icon delay" data-action="delay" data-id="' + p.id + '" title="顺延一天">&#x23ED;</button>' +
+        '<button class="btn-icon delete" data-action="delete" data-id="' + p.id + '" title="删除">&#x2715;</button>' +
+      '</div></div>';
+  }
+
+  // ── Attach card listeners ──
+  function attachCardListeners() {
+    document.querySelectorAll('[data-action="done"]').forEach(function(btn) {
+      btn.onclick = function(e) { e.stopPropagation(); markDone(btn.dataset.id); };
+    });
+    document.querySelectorAll('[data-action="delay"]').forEach(function(btn) {
+      btn.onclick = function(e) { e.stopPropagation(); delayOneDay(btn.dataset.id); };
+    });
+    document.querySelectorAll('[data-action="delete"]').forEach(function(btn) {
+      btn.onclick = function(e) { e.stopPropagation(); deletePerson(btn.dataset.id); };
+    });
+  }
+
+  // ── Actions ──
+  function markDone(id) {
+    var people = loadPeople();
+    var person = people.find(function(p) { return p.id === id; });
+    if (!person) return;
+    person.lastActivityDate = dateKey(new Date());
+    savePeople(people);
+    showToast(person.name + ' 已标记完成，14天后再次提醒');
+    refreshAllViews();
+  }
+
+  function delayOneDay(id) {
+    var people = loadPeople();
+    var person = people.find(function(p) { return p.id === id; });
+    if (!person) return;
+    var refDate = new Date(person.lastActivityDate + 'T00:00:00');
+    refDate.setDate(refDate.getDate() + 1);
+    person.lastActivityDate = dateKey(refDate);
+    savePeople(people);
+    showToast(person.name + ' 已顺延一天');
+    refreshAllViews();
+  }
+
+  function deletePerson(id) {
+    if (!confirm('确定要删除该人员吗？此操作不可恢复。')) return;
+    var people = loadPeople();
+    var person = people.find(function(p) { return p.id === id; });
+    people = people.filter(function(p) { return p.id !== id; });
+    savePeople(people);
+    showToast(person ? '已删除 ' + person.name : '已删除');
+    refreshAllViews();
+  }
+
+  // ── Home page ──
+  function renderHome() {
+    var container = document.getElementById('home-content');
+    var enriched = getPeopleWithDueDates();
+
+    // Sort: overdue, today, tomorrow, day after, then by date
+    enriched.sort(function(a, b) {
+      var order = { overdue: 0, today: 1, upcoming: 2 };
+      if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
+      if (a.nextDue && b.nextDue) return a.nextDue - b.nextDue;
+      return 0;
+    });
+
+    if (enriched.length === 0) {
+      container.innerHTML = '<div class="card"><div class="empty-state"><div class="icon">&#x1F4ED;</div><p>还没有录入任何人员</p><p style="font-size:12px;margin-top:4px">点击"录入"开始添加吧</p></div></div>';
+      return;
+    }
+
+    var today = new Date(); today.setHours(0,0,0,0);
+    var cutoff = new Date(today); cutoff.setDate(cutoff.getDate() + 8);
+    var visible = enriched.filter(function(p) {
+      if (p.status === 'overdue') return true;
+      if (!p.nextDue) return false;
+      return p.nextDue < cutoff;
+    });
+
+    if (visible.length === 0) {
+      container.innerHTML = '<div class="card"><div class="empty-state"><div class="icon">&#x1F389;</div><p>近期没有需要提醒的人员</p><p style="font-size:12px;margin-top:4px">一切正常，继续保持！</p></div></div>';
+      return;
+    }
+
+    var overdueItems = [];
+    var todayItems = [];
+    var tomorrowItems = [];
+    var dayAfterItems = [];
+    var upcomingItems = [];
+
+    visible.forEach(function(p) {
+      if (p.status === 'overdue') overdueItems.push(p);
+      else if (p.status === 'today') todayItems.push(p);
+      else if (p.status === 'upcoming' && p.nextDue) {
+        var d = daysBetween(today, p.nextDue);
+        if (d === 1) tomorrowItems.push(p);
+        else if (d === 2) dayAfterItems.push(p);
+        else upcomingItems.push(p);
+      }
+    });
+
+    var html = '';
+    if (overdueItems.length > 0) {
+      html += '<div class="date-group-header">&#x26A0;&#xFE0F; 已过期 &mdash; 请尽快联系 (' + overdueItems.length + '人)</div>';
+      overdueItems.forEach(function(p) { html += renderPersonCard(p); });
+    }
+    if (todayItems.length > 0) {
+      html += '<div class="date-group-header">&#x1F4CC; 今天需要参加 (' + todayItems.length + '人)</div>';
+      todayItems.forEach(function(p) { html += renderPersonCard(p); });
+    }
+    if (tomorrowItems.length > 0) {
+      html += '<div class="date-group-header">&#x1F4C5; 明天需要参加 (' + tomorrowItems.length + '人)</div>';
+      tomorrowItems.forEach(function(p) { html += renderPersonCard(p); });
+    }
+    if (dayAfterItems.length > 0) {
+      html += '<div class="date-group-header">&#x1F4C5; 后天需要参加 (' + dayAfterItems.length + '人)</div>';
+      dayAfterItems.forEach(function(p) { html += renderPersonCard(p); });
+    }
+    if (upcomingItems.length > 0) {
+      html += '<div class="date-group-header">&#x1F4C5; 即将到来 (' + upcomingItems.length + '人)</div>';
+      upcomingItems.forEach(function(p) { html += renderPersonCard(p); });
+    }
+
+    container.innerHTML = html;
+    attachCardListeners();
+  }
+
+  // ── Edit ──
+  function editPerson(id) {
+    var people = loadPeople();
+    var person = people.find(function(p) { return p.id === id; });
+    if (!person) return;
+    document.getElementById('input-name').value = person.name;
+    document.getElementById('input-date').value = person.lastActivityDate;
+    document.getElementById('input-age').value = person.age || '';
+    document.getElementById('input-phone').value = person.phone || '';
+    document.getElementById('input-notes').value = person.notes || '';
+    document.getElementById('input-edit-id').value = id;
+    document.getElementById('btn-submit').textContent = '\uD83D\uDCBE 保存修改';
+    document.getElementById('btn-cancel-edit').style.display = '';
+    document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelector('[data-page="add"]').classList.add('active');
+    document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+    document.getElementById('page-add').classList.add('active');
+    document.getElementById('input-name').focus();
+  }
+
+  function cancelEdit() {
+    document.getElementById('person-form').reset();
+    document.getElementById('input-edit-id').value = '';
+    document.getElementById('btn-submit').textContent = '\u2705 添加提醒';
+    document.getElementById('btn-cancel-edit').style.display = 'none';
+  }
+
+  document.getElementById('btn-cancel-edit').addEventListener('click', cancelEdit);
+
+  // ── Form submit ──
+  document.getElementById('person-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var name = document.getElementById('input-name').value.trim();
+    var dateStr = document.getElementById('input-date').value;
+    var age = document.getElementById('input-age').value.trim();
+    var phone = document.getElementById('input-phone').value.trim();
+    var notes = document.getElementById('input-notes').value.trim();
+    var editId = document.getElementById('input-edit-id').value;
+    if (!name || !dateStr) { showToast('请填写姓名和活动日期'); return; }
+    var people = loadPeople();
+    if (editId) {
+      var idx = people.findIndex(function(p) { return p.id === editId; });
+      if (idx !== -1) {
+        people[idx].name = name;
+        people[idx].lastActivityDate = dateStr;
+        people[idx].age = age || null;
+        people[idx].phone = phone || null;
+        people[idx].notes = notes || null;
+      }
+      showToast('信息已更新');
+      cancelEdit();
+    } else {
+      people.push({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+        name: name, lastActivityDate: dateStr,
+        age: age || null, phone: phone || null, notes: notes || null,
+        createdAt: new Date().toISOString()
+      });
+      showToast(name + ' 已添加，14天后将提醒');
+    }
+    savePeople(people);
+    document.getElementById('person-form').reset();
+    document.getElementById('input-edit-id').value = '';
+    document.getElementById('input-date').value = dateKey(new Date());
+    refreshAllViews();
+  });
+
+  // ── People list (with search) ──
+  function renderPeopleList() {
+    var people = loadPeople();
+    var searchEl = document.getElementById('people-search');
+    var searchTerm = searchEl ? (searchEl.value || '').trim().toLowerCase() : '';
+    if (searchTerm) {
+      people = people.filter(function(p) {
+        return (p.name || '').toLowerCase().includes(searchTerm) ||
+               (p.phone || '').toLowerCase().includes(searchTerm) ||
+               (p.notes || '').toLowerCase().includes(searchTerm) ||
+               (String(p.age || '')).toLowerCase().includes(searchTerm);
+      });
+    }
+    var container = document.getElementById('people-list');
+    var countBadge = document.getElementById('people-count');
+    countBadge.textContent = people.length;
+    if (people.length === 0) {
+      container.innerHTML = '<div class="empty-state"><p style="font-size:13px">' + (searchTerm ? '没有匹配的人员' : '暂无录入人员') + '</p></div>';
+      return;
+    }
+    container.innerHTML = people.map(function(p) {
+      var meta = '';
+      if (p.age) meta += '<span>年龄: ' + escapeHtml(String(p.age)) + '</span>';
+      if (p.phone) meta += '<span>&#x1F4DE; ' + escapeHtml(p.phone) + '</span>';
+      if (p.notes) meta += '<span>&#x1F4DD; ' + escapeHtml(p.notes) + '</span>';
+      return '<div class="person-card">' +
+        '<div class="person-avatar">' + p.name.charAt(0) + '</div>' +
+        '<div class="person-info"><div class="person-name">' + escapeHtml(p.name) + '</div>' +
+        (meta ? '<div class="person-meta">' + meta + '</div>' : '') +
+        '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">参考日期: ' + formatDateShort(new Date(p.lastActivityDate + 'T00:00:00')) + '</div></div>' +
+        '<div class="person-actions">' +
+          '<button class="btn-icon" data-action="edit" data-id="' + p.id + '" title="编辑">&#x270E;</button>' +
+          '<button class="btn-icon delete" data-action="delete" data-id="' + p.id + '" title="删除">&#x2715;</button>' +
+        '</div></div>';
+    }).join('');
+    container.querySelectorAll('[data-action="edit"]').forEach(function(btn) {
+      btn.onclick = function() { editPerson(btn.dataset.id); };
+    });
+    container.querySelectorAll('[data-action="delete"]').forEach(function(btn) {
+      btn.onclick = function() { deletePerson(btn.dataset.id); };
+    });
+  }
+
+  // ── Calendar ──
+  var calYear, calMonth;
+
+  function renderCalendar(year, month) {
+    if (year !== undefined) { calYear = year; calMonth = month; }
+    else { var td = new Date(); calYear = td.getFullYear(); calMonth = td.getMonth(); }
+    document.getElementById('cal-month-year').textContent = calYear + '年' + (calMonth + 1) + '月';
+
+    var peopleAll = loadPeople();
+    var today = new Date(); today.setHours(0,0,0,0);
+    var todayKey = dateKey(today);
+
+    // Build dueMap: ALL 14-day cycle dates in this month range
+    var monthStart = new Date(calYear, calMonth, 1);
+    var monthEnd = new Date(calYear, calMonth + 1, 0);
+    var rangeStart = new Date(monthStart); rangeStart.setDate(rangeStart.getDate() - 7);
+    var rangeEnd = new Date(monthEnd); rangeEnd.setDate(rangeEnd.getDate() + 7);
+
+    var dueMap = {};
+    peopleAll.forEach(function(p) {
+      var cycleDates = getCycleDatesInRange(p.lastActivityDate, rangeStart, rangeEnd);
+      cycleDates.forEach(function(dk) {
+        if (!dueMap[dk]) dueMap[dk] = [];
+        dueMap[dk].push({ id:p.id, name:p.name, lastActivityDate:p.lastActivityDate, age:p.age, phone:p.phone, notes:p.notes });
+      });
+    });
+
+    var grid = document.getElementById('cal-grid');
+    var dayHeaders = ['日','一','二','三','四','五','六'];
+    var html = dayHeaders.map(function(d) { return '<div class="calendar-day-header">' + d + '</div>'; }).join('');
+
+    var firstDay = new Date(calYear, calMonth, 1);
+    var lastDay = new Date(calYear, calMonth + 1, 0);
+    var startDow = firstDay.getDay();
+    var daysInMonth = lastDay.getDate();
+    var prevLastDay = new Date(calYear, calMonth, 0).getDate();
+
+    for (var i = startDow - 1; i >= 0; i--) {
+      html += '<div class="calendar-cell other-month">' + (prevLastDay - i) + '</div>';
+    }
+    for (var d = 1; d <= daysInMonth; d++) {
+      var cellDate = new Date(calYear, calMonth, d);
+      var key = dateKey(cellDate);
+      var isToday = key === todayKey;
+      var hasPeople = dueMap[key] && dueMap[key].length > 0;
+      var tc = isToday ? ' today-cell' : '';
+      html += '<div class="calendar-cell' + tc + '" data-date="' + key + '">' + d + (hasPeople ? '<div class="dot"></div>' : '') + '</div>';
+    }
+    var totalCells = startDow + daysInMonth;
+    var remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+    for (var j = 1; j <= remaining; j++) {
+      html += '<div class="calendar-cell other-month">' + j + '</div>';
+    }
+    grid.innerHTML = html;
+
+    grid.querySelectorAll('.calendar-cell:not(.other-month)').forEach(function(cell) {
+      cell.addEventListener('click', function() { showDateDetail(cell.dataset.date); });
+    });
+
+    var detailCard = document.getElementById('cal-detail-card');
+    if (detailCard.style.display !== 'none' && detailCard.dataset.selectedDate) {
+      var selCell = grid.querySelector('[data-date="' + detailCard.dataset.selectedDate + '"]');
+      if (selCell && !selCell.classList.contains('today-cell')) selCell.classList.add('selected');
+    }
+  }
+
+  function showDateDetail(dateKeyStr) {
+    var selectedDate = new Date(dateKeyStr + 'T00:00:00');
+    var RANGE = 3;
+    var rangeStart = new Date(selectedDate); rangeStart.setDate(rangeStart.getDate() - RANGE);
+    var rangeEnd = new Date(selectedDate); rangeEnd.setDate(rangeEnd.getDate() + RANGE);
+
+    var peopleAll = loadPeople();
+    var todayNow = new Date(); todayNow.setHours(0,0,0,0);
+    var peopleInRange = [];
+
+    peopleAll.forEach(function(p) {
+      var cycleDates = getCycleDatesInRange(p.lastActivityDate, rangeStart, rangeEnd);
+      cycleDates.forEach(function(dk) {
+        var cd = new Date(dk + 'T00:00:00');
+        var offset = daysBetween(selectedDate, cd);
+        var diffToday = daysBetween(todayNow, cd);
+        var status = diffToday < 0 ? 'overdue' : diffToday === 0 ? 'today' : 'upcoming';
+        var offsetLabel = '';
+        if (offset === 0) offsetLabel = '\u2190 \u5f53\u5929';
+        else if (offset > 0) offsetLabel = '\u2190 ' + offset + '\u5929\u540e';
+        else offsetLabel = '\u2190 ' + Math.abs(offset) + '\u5929\u524d';
+        peopleInRange.push({
+          id:p.id, name:p.name, lastActivityDate:p.lastActivityDate,
+          age:p.age, phone:p.phone, notes:p.notes,
+          nextDue:cd, status:status, dueKey:dk, offsetDays:offset, offsetLabel:offsetLabel
+        });
+      });
+    });
+
+    peopleInRange.sort(function(a, b) {
+      var absA = Math.abs(a.offsetDays), absB = Math.abs(b.offsetDays);
+      if (absA !== absB) return absA - absB;
+      return a.offsetDays - b.offsetDays;
+    });
+
+    var detailCard = document.getElementById('cal-detail-card');
+    var title = document.getElementById('cal-detail-title');
+    var list = document.getElementById('cal-detail-list');
+    detailCard.style.display = '';
+    detailCard.dataset.selectedDate = dateKeyStr;
+    var parts = dateKeyStr.split('-');
+    title.textContent = parts[0] + '\u5e74' + parseInt(parts[1]) + '\u6708' + parseInt(parts[2]) + '\u65e5 \u00b7 ' + peopleInRange.length + '\u4eba\u9700\u8981\u53c2\u52a0 (\u00b13\u5929\u8303\u56f4)';
+
+    if (peopleInRange.length === 0) {
+      list.innerHTML = '<div class="empty-state"><p style="font-size:13px">\u5f53\u5929\u53ca\u524d\u540e3\u5929\u6ca1\u6709\u9700\u8981\u63d0\u9192\u7684\u4eba\u5458</p></div>';
+    } else {
+      list.innerHTML = peopleInRange.map(function(p) { return renderPersonCard(p); }).join('');
+      attachCardListeners();
+    }
+    document.querySelectorAll('.calendar-cell.selected').forEach(function(c) { c.classList.remove('selected'); });
+    var cell = document.querySelector('.calendar-cell[data-date="' + dateKeyStr + '"]');
+    if (cell && !cell.classList.contains('today-cell')) cell.classList.add('selected');
+    detailCard.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }
+
+  // Calendar nav buttons
+  document.getElementById('cal-prev').addEventListener('click', function() {
+    if (calMonth === 0) { calYear--; calMonth = 11; } else calMonth--;
+    document.getElementById('cal-detail-card').style.display = 'none';
+    renderCalendar(calYear, calMonth);
+  });
+  document.getElementById('cal-next').addEventListener('click', function() {
+    if (calMonth === 11) { calYear++; calMonth = 0; } else calMonth++;
+    document.getElementById('cal-detail-card').style.display = 'none';
+    renderCalendar(calYear, calMonth);
+  });
+  document.getElementById('cal-today').addEventListener('click', function() {
+    var td = new Date(); calYear = td.getFullYear(); calMonth = td.getMonth();
+    document.getElementById('cal-detail-card').style.display = 'none';
+    renderCalendar(calYear, calMonth);
+  });
+
+  // ── Search listener ──
+  var searchInput = document.getElementById('people-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', function() { renderPeopleList(); });
+  }
+
+  // ── Init ──
+  var today = new Date();
+  document.getElementById('input-date').value = dateKey(today);
+  renderHome();
+  renderPeopleList();
+
+
+})();
+</script>
+</body>
+</html>
+
